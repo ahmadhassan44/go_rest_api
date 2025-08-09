@@ -5,3 +5,4 @@ RUN go mod download
 COPY * ./
 RUN make build
 EXPOSE 3000 
+CMD [ "./bin/go_rest_api" ]
