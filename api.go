@@ -40,6 +40,7 @@ func NewAPIServer(listenAddr string) *APIServer {
 }
 func (s *APIServer) Listen() {
 	router := mux.NewRouter()
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static")))
 	router.HandleFunc("/account", makeHttpHandlerFunc(s.handleAccount))
 	log.Printf("JSON server listening on %s", s.listenAddr)
 	log.Fatal(http.ListenAndServe(s.listenAddr, router))
