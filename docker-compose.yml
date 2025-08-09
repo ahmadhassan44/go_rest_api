@@ -1,0 +1,27 @@
+services:
+      server:
+        container_name: gobank_server
+        build: .
+        env_file:
+          - .env
+        depends_on: 
+          - db
+        restart: unless-stopped
+        ports : 
+          - "3000:3000"
+
+      db:
+        image: postgres:latest 
+        container_name: gobank_postgres
+        restart: unless-stopped
+        ports:
+          - "5432:5432" 
+        environment:
+          POSTGRES_DB: gobank
+          POSTGRES_USER: gobank_user
+          POSTGRES_PASSWORD: p486Uby29j
+        volumes:
+          - pgdata:/var/lib/postgresql/data 
+
+volumes:
+  pgdata:
