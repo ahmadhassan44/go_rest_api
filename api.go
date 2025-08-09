@@ -12,7 +12,6 @@ import (
 type apiFunc func(w http.ResponseWriter, r *http.Request) error
 
 func WriteJSON(w http.ResponseWriter, status int, v any) error {
-	// Set headers before writing the status code
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(v)
