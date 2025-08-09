@@ -50,8 +50,8 @@ func (pgStore *PostGresStore) createAccountTable() error {
 		last_name varchar(100),
 		number int,
 		balance int,
-		created_at timestamp,
-		updated_at timestamp
+		created_at timestamp default now(),
+		updated_at timestamp default now()
 	)`
 	_, err := pgStore.db.Exec(query)
 	return err
