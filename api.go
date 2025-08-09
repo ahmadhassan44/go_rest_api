@@ -12,8 +12,9 @@ import (
 type apiFunc func(w http.ResponseWriter, r *http.Request) error
 
 func WriteJSON(w http.ResponseWriter, status int, v any) error {
-	w.WriteHeader(status)
+	// Set headers before writing the status code
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(v)
 }
 
@@ -40,8 +41,8 @@ func NewAPIServer(listenAddr string) *APIServer {
 }
 func (s *APIServer) Listen() {
 	router := mux.NewRouter()
-	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static")))
 	router.HandleFunc("/account", makeHttpHandlerFunc(s.handleAccount))
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static")))
 	log.Printf("JSON server listening on %s", s.listenAddr)
 	log.Fatal(http.ListenAndServe(s.listenAddr, router))
 
@@ -60,7 +61,8 @@ func (s *APIServer) handleAccount(w http.ResponseWriter, r *http.Request) error 
 	return fmt.Errorf("%s request method not allowed on /account", r.Method)
 }
 func (s *APIServer) handleGetAccount(w http.ResponseWriter, r *http.Request) error {
-	return nil
+	account := NewAccount("Ahmad", "Hassan")
+	return WriteJSON(w, http.StatusOK, account)
 }
 func (s *APIServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) error {
 	return nil
