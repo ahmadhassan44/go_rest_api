@@ -8,11 +8,11 @@ import (
 )
 
 type Account struct {
-	ID        string
-	FirstName string
-	LastName  string
-	Number    int64
-	Balance   int64
+	ID        string `json:"id"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Number    int64  `json:"number"`
+	Balance   int64  `json:"balance"`
 }
 
 func NewAccount(firstName string, lastName string) *Account {
