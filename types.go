@@ -23,3 +23,8 @@ func NewAccount(firstName string, lastName string) *Account {
 		Number:    int64(rand.Intn(math.MaxInt64)),
 	}
 }
+
+type CreateAccountDto struct {
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+}
