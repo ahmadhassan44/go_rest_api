@@ -12,6 +12,7 @@ type AccountStorage interface {
 	CreateAccount(*Account) (*Account, error)
 	DeleteAccount(*Account) error
 	GetAccountById(string) (*Account, error)
+	GetAllAccounts() ([]*Account, error)
 	UpdateAccount(*Account) error
 }
 type Storage interface {
@@ -101,4 +102,30 @@ func (pgStore *PostGresStore) GetAccountById(id string) (*Account, error) {
 		return nil, err
 	}
 	return &account, nil
+}
+func (pgStore *PostGresStore) GetAllAccounts() ([]*Account, error) {
+	query := `SELECT id, first_name, last_name, number, balance, created_at, updated_at 
+	FROM account`
+	rows, err := pgStore.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	accounts := []*Account{}
+	for rows.Next() {
+		account := &Account{}
+		err := rows.Scan(
+			&account.ID,
+			&account.FirstName,
+			&account.LastName,
+			&account.Number,
+			&account.Balance,
+			&account.CreatedAt,
+			&account.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, account)
+	}
+	return accounts, nil
 }

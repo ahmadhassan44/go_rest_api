@@ -64,18 +64,21 @@ func (s *APIServer) handleAccount(w http.ResponseWriter, r *http.Request) error 
 }
 func (s *APIServer) handleGetAccount(w http.ResponseWriter, r *http.Request) error {
 	params := mux.Vars(r)
-	var account *Account
-	var err error
+
 	if params["id"] != "" {
-		account, err = s.store.GetAccountById(params["id"])
+		account, err := s.store.GetAccountById(params["id"])
 		if err != nil {
 			return err
 		}
+		return WriteJSON(w, http.StatusOK, account)
 	} else {
-		account = NewAccount("John", "Doe")
+		accounts, err := s.store.GetAllAccounts()
+		if err != nil {
+			return err
+		}
+		return WriteJSON(w, http.StatusOK, accounts)
 	}
 
-	return WriteJSON(w, http.StatusOK, account)
 }
 func (s *APIServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) error {
 	createAccountDto := CreateAccountDto{}
