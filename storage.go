@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 
@@ -22,6 +23,8 @@ type Storage interface {
 type PostGresStore struct {
 	db *sql.DB
 }
+
+var ErrAccountNotFound = errors.New("account not found")
 
 func NewPostgresStore() (*PostGresStore, error) {
 	dbHost := os.Getenv("DB_HOST")
@@ -99,6 +102,9 @@ func (pgStore *PostGresStore) GetAccountById(id string) (*Account, error) {
 		&account.UpdatedAt,
 	)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrAccountNotFound
+		}
 		return nil, err
 	}
 	return &account, nil
