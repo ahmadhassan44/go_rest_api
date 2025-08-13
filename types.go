@@ -34,7 +34,7 @@ type CreateAccountDto struct {
 type UpdateAccountDto struct {
 	FirstName *string `json:"firstName"`
 	LastName  *string `json:"lastName"`
-	Balance   *int    `json:"balance"`
+	Balance   *int64  `json:"balance"`
 }
 type AccountError struct {
 	Msg        string
