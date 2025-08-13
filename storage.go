@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	_ "github.com/lib/pq"
 )
@@ -14,7 +15,7 @@ type AccountStorage interface {
 	DeleteAccount(string) error
 	GetAccountById(string) (*Account, error)
 	GetAllAccounts() ([]*Account, error)
-	UpdateAccount(*Account) error
+	UpdateAccount(string, *UpdateAccountDto) error
 }
 type Storage interface {
 	AccountStorage
@@ -94,9 +95,50 @@ func (pgStore *PostGresStore) DeleteAccount(id string) error {
 	}
 	return nil
 }
-func (pgStore *PostGresStore) UpdateAccount(*Account) error {
-	return nil
+func (pgStore *PostGresStore) UpdateAccount(id string, updateAccountDto *UpdateAccountDto) error {
+	updates := map[string]any{}
+	if updateAccountDto.FirstName != nil {
+		updates["first_name"] = *updateAccountDto.FirstName
+	}
+	if updateAccountDto.LastName != nil {
+		updates["last_name"] = *updateAccountDto.LastName
+	}
+	if updateAccountDto.Balance != nil {
+		updates["balance"] = *updateAccountDto.Balance
+	}
+	if len(updates) == 0 {
+		return NewAccountError("Nothing to specified to update!", http.StatusBadRequest)
+	}
+	setParts := []string{}
+	args := []interface{}{}
+	argPos := 1
 
+	for col, val := range updates {
+		setParts = append(setParts, fmt.Sprintf("%s = $%d", col, argPos))
+		args = append(args, val)
+		argPos++
+	}
+
+	args = append(args, id)
+	query := fmt.Sprintf(
+		"UPDATE account SET %s WHERE id = $%d",
+		strings.Join(setParts, ", "),
+		argPos,
+	)
+	res, err := pgStore.db.Exec(query, args...)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return NewAccountError(
+			fmt.Sprintf("Account with ID: %s not found!", id), http.StatusNotFound,
+		)
+	}
+	return nil
 }
 func (pgStore *PostGresStore) GetAccountById(id string) (*Account, error) {
 	query := `SELECT id, first_name, last_name, number, balance, created_at, updated_at 

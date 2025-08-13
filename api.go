@@ -110,7 +110,19 @@ func (s *APIServer) handleDeleteAccount(w http.ResponseWriter, r *http.Request) 
 	return WriteJSON(w, http.StatusOK, "Account deleted successfully!")
 }
 func (s *APIServer) handleUpdateAccount(w http.ResponseWriter, r *http.Request) error {
-	return nil
+	params := mux.Vars(r)
+	id := params["id"]
+	if id == "" {
+		return NewAccountError("No ID specified for account updation", http.StatusBadRequest)
+	}
+	updateAccountDto := UpdateAccountDto{}
+	json.NewDecoder(r.Body).Decode(&updateAccountDto)
+	err := s.store.UpdateAccount(id, &updateAccountDto)
+	if err != nil {
+		return err
+	}
+
+	return WriteJSON(w, http.StatusOK, "Account updated successfully!")
 }
 func (s *APIServer) handleTransfer(w http.ResponseWriter, r *http.Request) error {
 	return nil
