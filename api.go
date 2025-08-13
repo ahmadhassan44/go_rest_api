@@ -95,11 +95,19 @@ func (s *APIServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		return err
 	}
-
 	return WriteJSON(w, http.StatusCreated, account)
 }
 func (s *APIServer) handleDeleteAccount(w http.ResponseWriter, r *http.Request) error {
-	return nil
+	params := mux.Vars(r)
+	id := params["id"]
+	if id == "" {
+		return NewAccountError("No ID specified for account deletion", http.StatusBadRequest)
+	}
+	err := s.store.DeleteAccount(id)
+	if err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusOK, "Account deleted successfully!")
 }
 func (s *APIServer) handleUpdateAccount(w http.ResponseWriter, r *http.Request) error {
 	return nil

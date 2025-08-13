@@ -11,7 +11,7 @@ import (
 
 type AccountStorage interface {
 	CreateAccount(*Account) (*Account, error)
-	DeleteAccount(*Account) error
+	DeleteAccount(string) error
 	GetAccountById(string) (*Account, error)
 	GetAllAccounts() ([]*Account, error)
 	UpdateAccount(*Account) error
@@ -77,9 +77,22 @@ func (pgStore *PostGresStore) CreateAccount(account *Account) (*Account, error) 
 
 	return createdAccount, nil
 }
-func (pgStore *PostGresStore) DeleteAccount(*Account) error {
+func (pgStore *PostGresStore) DeleteAccount(id string) error {
+	query := "DELETE FROM account WHERE id= $1"
+	res, err := pgStore.db.Exec(query, id)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return NewAccountError(
+			fmt.Sprintf("Account with ID: %s not found!", id), http.StatusNotFound,
+		)
+	}
 	return nil
-
 }
 func (pgStore *PostGresStore) UpdateAccount(*Account) error {
 	return nil
