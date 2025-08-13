@@ -66,26 +66,14 @@ func (pgStore *PostGresStore) CreateAccount(account *Account) (*Account, error) 
 		return nil, err
 	}
 
-	// Query the database to get the complete record with timestamps
-	selectQuery := `SELECT id, first_name, last_name, number, balance, created_at, updated_at 
-	FROM account WHERE id = $1`
+	var createdAccount *Account
+	createdAccount, err = pgStore.GetAccountById(account.ID)
 
-	var createdAccount Account
-	row := pgStore.db.QueryRow(selectQuery, account.ID)
-	err = row.Scan(
-		&createdAccount.ID,
-		&createdAccount.FirstName,
-		&createdAccount.LastName,
-		&createdAccount.Number,
-		&createdAccount.Balance,
-		&createdAccount.CreatedAt,
-		&createdAccount.UpdatedAt,
-	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &createdAccount, nil
+	return createdAccount, nil
 }
 func (pgStore *PostGresStore) DeleteAccount(*Account) error {
 	return nil
@@ -96,6 +84,21 @@ func (pgStore *PostGresStore) UpdateAccount(*Account) error {
 
 }
 func (pgStore *PostGresStore) GetAccountById(id string) (*Account, error) {
-	return nil, nil
-
+	query := `SELECT id, first_name, last_name, number, balance, created_at, updated_at 
+	FROM account WHERE id = $1`
+	var account Account
+	row := pgStore.db.QueryRow(query, id)
+	err := row.Scan(
+		&account.ID,
+		&account.FirstName,
+		&account.LastName,
+		&account.Number,
+		&account.Balance,
+		&account.CreatedAt,
+		&account.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &account, nil
 }

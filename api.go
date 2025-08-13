@@ -65,8 +65,12 @@ func (s *APIServer) handleAccount(w http.ResponseWriter, r *http.Request) error 
 func (s *APIServer) handleGetAccount(w http.ResponseWriter, r *http.Request) error {
 	params := mux.Vars(r)
 	var account *Account
+	var err error
 	if params["id"] != "" {
-		account = NewAccount("Ahmad", "Hassan")
+		account, err = s.store.GetAccountById(params["id"])
+		if err != nil {
+			return err
+		}
 	} else {
 		account = NewAccount("John", "Doe")
 	}
