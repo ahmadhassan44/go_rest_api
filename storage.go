@@ -107,7 +107,7 @@ func (pgStore *PostGresStore) UpdateAccount(id string, updateAccountDto *UpdateA
 		updates["balance"] = *updateAccountDto.Balance
 	}
 	if len(updates) == 0 {
-		return NewAccountError("Nothing to specified to update!", http.StatusBadRequest)
+		return NewAccountError("Nothing specified to update!", http.StatusBadRequest)
 	}
 	setParts := []string{}
 	args := []interface{}{}
