@@ -19,14 +19,15 @@ func WriteJSON(w http.ResponseWriter, status int, v any) error {
 }
 
 type APIError struct {
-	Error string
+	Error string `json:"error"`
 }
 
 func makeHttpHandlerFunc(f apiFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := f(w, r); err != nil {
-			if errors.Is(err, ErrAccountNotFound) {
-				WriteJSON(w, http.StatusNotFound, APIError{Error: err.Error()})
+			var ae *AccountError
+			if errors.As(err, &ae) {
+				WriteJSON(w, ae.StatusCode, APIError{Error: ae.Error()})
 				return
 			}
 			WriteJSON(w, http.StatusBadRequest, APIError{Error: err.Error()})

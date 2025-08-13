@@ -31,3 +31,18 @@ type CreateAccountDto struct {
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
 }
+
+type AccountError struct {
+	Msg        string
+	StatusCode int
+}
+
+func (e AccountError) Error() string {
+	return e.Msg
+}
+func NewAccountError(message string, statusCode int) *AccountError {
+	return &AccountError{
+		Msg:        message,
+		StatusCode: statusCode,
+	}
+}
