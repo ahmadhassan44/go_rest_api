@@ -36,6 +36,10 @@ type UpdateAccountDto struct {
 	LastName  *string `json:"lastName"`
 	Balance   *int64  `json:"balance"`
 }
+type TransferMoneyDto struct {
+	ReceiverId string `json:"receiverId"`
+	Amount     int    `json:"amount"`
+}
 type AccountError struct {
 	Msg        string
 	StatusCode int
