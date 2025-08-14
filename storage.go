@@ -16,6 +16,7 @@ type AccountStorage interface {
 	GetAccountById(string) (*Account, error)
 	GetAllAccounts() ([]*Account, error)
 	UpdateAccount(string, *UpdateAccountDto) error
+	TransferMoney(*TransferMoneyDto) error
 }
 type Storage interface {
 	AccountStorage
@@ -189,4 +190,43 @@ func (pgStore *PostGresStore) GetAllAccounts() ([]*Account, error) {
 		accounts = append(accounts, account)
 	}
 	return accounts, nil
+}
+func (pgStore *PostGresStore) TransferMoney(transferMoneyDto *TransferMoneyDto) error {
+	tx, err := pgStore.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	// TODO: replace with sender id coming from jwt
+	senderID, receiverID := "94e531b7-5c08-4297-a889-77298034bc32", transferMoneyDto.ReceiverId
+	var a, b string
+	if senderID < receiverID {
+		a, b = senderID, receiverID
+	} else {
+		a, b = receiverID, senderID
+	}
+	//acquire lock
+	if _, err := tx.Exec(`SELECT id FROM account WHERE id IN ($1, $2) FOR UPDATE`, a, b); err != nil {
+		return err
+	}
+	//debit
+	res, err := tx.Exec(
+		`UPDATE account SET balance = balance - $1, updated_at = now()
+		 WHERE id = $2 AND balance >= $1`, transferMoneyDto.Amount, senderID,
+	)
+	if err != nil {
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return NewAccountError("insufficient funds", http.StatusBadRequest)
+	}
+	// Credit
+	if _, err := tx.Exec(
+		`UPDATE account SET balance = balance + $1, updated_at = now()
+		 WHERE id = $2`, transferMoneyDto.Amount, receiverID,
+	); err != nil {
+		return err
+	}
+	return tx.Commit()
 }

@@ -50,6 +50,7 @@ func (s *APIServer) Listen() {
 	router := mux.NewRouter()
 	router.HandleFunc("/account", makeHttpHandlerFunc(s.handleAccount))
 	router.HandleFunc("/account/{id}", makeHttpHandlerFunc(s.handleAccount))
+	router.HandleFunc("/transfer", makeHttpHandlerFunc(s.handleTransfer)).Methods("POST")
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static")))
 	log.Printf("JSON server listening on %s", s.listenAddr)
 	log.Fatal(http.ListenAndServe(s.listenAddr, router))
@@ -125,5 +126,14 @@ func (s *APIServer) handleUpdateAccount(w http.ResponseWriter, r *http.Request) 
 	return WriteJSON(w, http.StatusOK, "Account updated successfully!")
 }
 func (s *APIServer) handleTransfer(w http.ResponseWriter, r *http.Request) error {
-	return nil
+	transferMoneyDto := &TransferMoneyDto{}
+	json.NewDecoder(r.Body).Decode(transferMoneyDto)
+	if transferMoneyDto.Amount == 0 || transferMoneyDto.ReceiverId == "" {
+		return NewAccountError("Please specify receiver and amount to send!", http.StatusBadRequest)
+	}
+	err := s.store.TransferMoney(transferMoneyDto)
+	if err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusOK, "Amount Transffered Successfully!")
 }

@@ -38,7 +38,7 @@ type UpdateAccountDto struct {
 }
 type TransferMoneyDto struct {
 	ReceiverId string `json:"receiverId"`
-	Amount     int    `json:"amount"`
+	Amount     int64  `json:"amount"`
 }
 type AccountError struct {
 	Msg        string
