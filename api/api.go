@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	models "github.com/ahmadhassan44/go_rest_api/models"
 	storage "github.com/ahmadhassan44/go_rest_api/storage"
@@ -54,6 +55,7 @@ func (s *APIServer) Listen() {
 	router.HandleFunc("/account", makeHttpHandlerFunc(s.handleAccount))
 	router.HandleFunc("/account/{id}", makeHttpHandlerFunc(s.handleAccount))
 	router.HandleFunc("/transfer", makeHttpHandlerFunc(s.handleTransfer)).Methods("POST")
+	router.HandleFunc("/login", makeHttpHandlerFunc(s.handleLogin)).Methods("POST")
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static")))
 	log.Printf("JSON server listening on %s", s.listenAddr)
 	log.Fatal(http.ListenAndServe(s.listenAddr, router))
@@ -105,13 +107,6 @@ func (s *APIServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) 
 	}
 	return WriteJSON(w, http.StatusCreated, account)
 }
-func hashPassword(password string) (string, error) {
-	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-	return string(hashedBytes), nil
-}
 func (s *APIServer) handleDeleteAccount(w http.ResponseWriter, r *http.Request) error {
 	params := mux.Vars(r)
 	id := params["id"]
@@ -150,4 +145,42 @@ func (s *APIServer) handleTransfer(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	return WriteJSON(w, http.StatusOK, "Amount Transffered Successfully!")
+}
+
+func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) error {
+	loginDto := &models.LoginDto{}
+	json.NewDecoder(r.Body).Decode(loginDto)
+	dbPass, err := s.store.GetUserByUserName(loginDto.UserName)
+	if err != nil {
+		return err
+	}
+	if err := verifyPassword(*dbPass, loginDto.Password); err != nil {
+		return models.NewAccountError("Invalid Creadentials!", http.StatusUnauthorized)
+	}
+	accessToken := "access-token-placeholder"
+	refreshToken := "refresh-token-placeholder"
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		Expires:  time.Now().Add(7 * 24 * time.Hour),
+	})
+
+	return WriteJSON(w, http.StatusOK, map[string]string{
+		"message":      "Login successful",
+		"access_token": accessToken,
+	})
+}
+
+func hashPassword(password string) (string, error) {
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedBytes), nil
+}
+func verifyPassword(hashedPassword, providedPassword string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(providedPassword))
 }

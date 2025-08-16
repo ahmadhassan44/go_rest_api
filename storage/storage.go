@@ -18,6 +18,7 @@ type AccountStorage interface {
 	GetAllAccounts() ([]*models.Account, error)
 	UpdateAccount(string, *models.UpdateAccountDto) error
 	TransferMoney(*models.TransferMoneyDto) error
+	GetUserByUserName(string) (*string, error)
 }
 type Storage interface {
 	AccountStorage
@@ -259,4 +260,24 @@ func (pgStore *PostGresStore) TransferMoney(transferMoneyDto *models.TransferMon
 		return err
 	}
 	return tx.Commit()
+}
+
+func (pgStore *PostGresStore) GetUserByUserName(userName string) (*string, error) {
+	query := "SELECT user_name,password_hash FROM account WHERE user_name = $1"
+	row := pgStore.db.QueryRow(query, userName)
+	var dbUser string
+	var hashedPassword string
+	err := row.Scan(
+		&dbUser,
+		&hashedPassword,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, models.NewAccountError(
+				fmt.Sprintf("Account with username: %s not found!", userName), http.StatusNotFound,
+			)
+		}
+		return nil, err
+	}
+	return &hashedPassword, nil
 }
