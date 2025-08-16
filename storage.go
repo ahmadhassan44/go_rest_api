@@ -44,7 +44,33 @@ func NewPostgresStore() (*PostGresStore, error) {
 }
 
 func (pgStore *PostGresStore) Init() error {
-	return pgStore.createAccountTable()
+
+	err := pgStore.createAccountTable()
+	if err != nil {
+		return err
+	}
+	err = pgStore.createRefreshTokensTable()
+	return err
+}
+func (pgStore *PostGresStore) createRefreshTokensTable() error {
+	query := `CREATE TABLE IF NOT EXISTS refresh_tokens (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		account_id UUID NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+		token VARCHAR(255) UNIQUE NOT NULL,
+		expires_at TIMESTAMP NOT NULL,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		revoked BOOLEAN NOT NULL DEFAULT FALSE
+	)`
+	_, err := pgStore.db.Exec(query)
+	if err != nil {
+		return err
+	}
+	query = `CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);`
+	_, err = pgStore.db.Exec(query)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (pgStore *PostGresStore) createAccountTable() error {
