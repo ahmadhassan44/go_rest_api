@@ -10,6 +10,7 @@ import (
 	models "github.com/ahmadhassan44/go_rest_api/models"
 	storage "github.com/ahmadhassan44/go_rest_api/storage"
 	"github.com/gorilla/mux"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type apiFunc func(w http.ResponseWriter, r *http.Request) error
@@ -90,15 +91,26 @@ func (s *APIServer) handleGetAccount(w http.ResponseWriter, r *http.Request) err
 
 }
 func (s *APIServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) error {
-	createAccountDto := models.CreateAccountDto{}
-	if err := json.NewDecoder(r.Body).Decode(&createAccountDto); err != nil {
+	createAccountDto := &models.CreateAccountDto{}
+	if err := json.NewDecoder(r.Body).Decode(createAccountDto); err != nil {
 		return err
 	}
-	account, err := s.store.CreateAccount(models.NewAccount(createAccountDto.FirstName, createAccountDto.LastName))
+	hashedPasword, err := hashPassword(createAccountDto.Password)
+	if err != nil {
+		return models.NewAccountError("Could not store you data securely", http.StatusInternalServerError)
+	}
+	account, err := s.store.CreateAccount(models.NewAccount(createAccountDto.FirstName, createAccountDto.LastName, createAccountDto.UserName, hashedPasword))
 	if err != nil {
 		return err
 	}
 	return WriteJSON(w, http.StatusCreated, account)
+}
+func hashPassword(password string) (string, error) {
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedBytes), nil
 }
 func (s *APIServer) handleDeleteAccount(w http.ResponseWriter, r *http.Request) error {
 	params := mux.Vars(r)

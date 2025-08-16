@@ -79,6 +79,8 @@ func (pgStore *PostGresStore) createAccountTable() error {
 		id uuid primary key,
 		first_name varchar(100),
 		last_name varchar(100),
+		user_name varchar(100),
+		password_hash varchar(100),
 		number bigint,
 		balance int,
 		created_at timestamp default now(),
@@ -90,9 +92,9 @@ func (pgStore *PostGresStore) createAccountTable() error {
 
 func (pgStore *PostGresStore) CreateAccount(account *models.Account) (*models.Account, error) {
 	query := `INSERT INTO 
-	account(id,first_name,last_name,number,balance) 
-	VALUES ($1,$2,$3,$4,0)`
-	_, err := pgStore.db.Exec(query, account.ID, account.FirstName, account.LastName, account.Number)
+	account(id,first_name,last_name,user_name,password_hash,number,balance) 
+	VALUES ($1,$2,$3,$4,$5,$6,0)`
+	_, err := pgStore.db.Exec(query, account.ID, account.FirstName, account.LastName, account.UserName, account.HashedPassword, account.Number)
 	if err != nil {
 		return nil, err
 	}
