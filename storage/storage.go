@@ -171,7 +171,7 @@ func (pgStore *PostGresStore) UpdateAccount(id string, updateAccountDto *models.
 	return nil
 }
 func (pgStore *PostGresStore) GetAccountById(id string) (*models.Account, error) {
-	query := `SELECT id, first_name, last_name, number, balance, created_at, updated_at 
+	query := `SELECT id, first_name, last_name,user_name, number, balance, created_at, updated_at 
 	FROM account WHERE id = $1`
 	var account models.Account
 	row := pgStore.db.QueryRow(query, id)
@@ -179,6 +179,7 @@ func (pgStore *PostGresStore) GetAccountById(id string) (*models.Account, error)
 		&account.ID,
 		&account.FirstName,
 		&account.LastName,
+		&account.UserName,
 		&account.Number,
 		&account.Balance,
 		&account.CreatedAt,

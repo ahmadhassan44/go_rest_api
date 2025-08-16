@@ -9,11 +9,11 @@ import (
 )
 
 type Account struct {
-	ID             string `json:"id"`
-	FirstName      string `json:"firstName"`
-	LastName       string `json:"lastName"`
-	UserName       string `json:"userName"`
-	HashedPassword string
+	ID             string    `json:"id"`
+	FirstName      string    `json:"firstName"`
+	LastName       string    `json:"lastName"`
+	UserName       string    `json:"userName"`
+	HashedPassword string    `json:"-"`
 	Number         int64     `json:"number"`
 	Balance        int64     `json:"balance"`
 	CreatedAt      time.Time `json:"createdAt"`
