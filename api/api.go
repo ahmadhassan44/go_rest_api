@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 
+	models "github.com/ahmadhassan44/go_rest_api/models"
+	storage "github.com/ahmadhassan44/go_rest_api/storage"
 	"github.com/gorilla/mux"
 )
 
@@ -25,7 +27,7 @@ type APIError struct {
 func makeHttpHandlerFunc(f apiFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := f(w, r); err != nil {
-			var ae *AccountError
+			var ae *models.AccountError
 			if errors.As(err, &ae) {
 				WriteJSON(w, ae.StatusCode, APIError{Error: ae.Error()})
 				return
@@ -37,10 +39,10 @@ func makeHttpHandlerFunc(f apiFunc) http.HandlerFunc {
 
 type APIServer struct {
 	listenAddr string
-	store      Storage
+	store      storage.Storage
 }
 
-func NewAPIServer(listenAddr string, store Storage) *APIServer {
+func NewAPIServer(listenAddr string, store storage.Storage) *APIServer {
 	return &APIServer{
 		listenAddr: listenAddr,
 		store:      store,
@@ -88,11 +90,11 @@ func (s *APIServer) handleGetAccount(w http.ResponseWriter, r *http.Request) err
 
 }
 func (s *APIServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) error {
-	createAccountDto := CreateAccountDto{}
+	createAccountDto := models.CreateAccountDto{}
 	if err := json.NewDecoder(r.Body).Decode(&createAccountDto); err != nil {
 		return err
 	}
-	account, err := s.store.CreateAccount(NewAccount(createAccountDto.FirstName, createAccountDto.LastName))
+	account, err := s.store.CreateAccount(models.NewAccount(createAccountDto.FirstName, createAccountDto.LastName))
 	if err != nil {
 		return err
 	}
@@ -102,7 +104,7 @@ func (s *APIServer) handleDeleteAccount(w http.ResponseWriter, r *http.Request) 
 	params := mux.Vars(r)
 	id := params["id"]
 	if id == "" {
-		return NewAccountError("No ID specified for account deletion", http.StatusBadRequest)
+		return models.NewAccountError("No ID specified for account deletion", http.StatusBadRequest)
 	}
 	err := s.store.DeleteAccount(id)
 	if err != nil {
@@ -114,9 +116,9 @@ func (s *APIServer) handleUpdateAccount(w http.ResponseWriter, r *http.Request) 
 	params := mux.Vars(r)
 	id := params["id"]
 	if id == "" {
-		return NewAccountError("No ID specified for account updation", http.StatusBadRequest)
+		return models.NewAccountError("No ID specified for account updation", http.StatusBadRequest)
 	}
-	updateAccountDto := UpdateAccountDto{}
+	updateAccountDto := models.UpdateAccountDto{}
 	json.NewDecoder(r.Body).Decode(&updateAccountDto)
 	err := s.store.UpdateAccount(id, &updateAccountDto)
 	if err != nil {
@@ -126,10 +128,10 @@ func (s *APIServer) handleUpdateAccount(w http.ResponseWriter, r *http.Request) 
 	return WriteJSON(w, http.StatusOK, "Account updated successfully!")
 }
 func (s *APIServer) handleTransfer(w http.ResponseWriter, r *http.Request) error {
-	transferMoneyDto := &TransferMoneyDto{}
+	transferMoneyDto := &models.TransferMoneyDto{}
 	json.NewDecoder(r.Body).Decode(transferMoneyDto)
 	if transferMoneyDto.Amount == 0 || transferMoneyDto.ReceiverId == "" {
-		return NewAccountError("Please specify receiver and amount to send!", http.StatusBadRequest)
+		return models.NewAccountError("Please specify receiver and amount to send!", http.StatusBadRequest)
 	}
 	err := s.store.TransferMoney(transferMoneyDto)
 	if err != nil {

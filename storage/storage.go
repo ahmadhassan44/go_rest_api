@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"database/sql"
@@ -7,16 +7,17 @@ import (
 	"os"
 	"strings"
 
+	models "github.com/ahmadhassan44/go_rest_api/models"
 	_ "github.com/lib/pq"
 )
 
 type AccountStorage interface {
-	CreateAccount(*Account) (*Account, error)
+	CreateAccount(*models.Account) (*models.Account, error)
 	DeleteAccount(string) error
-	GetAccountById(string) (*Account, error)
-	GetAllAccounts() ([]*Account, error)
-	UpdateAccount(string, *UpdateAccountDto) error
-	TransferMoney(*TransferMoneyDto) error
+	GetAccountById(string) (*models.Account, error)
+	GetAllAccounts() ([]*models.Account, error)
+	UpdateAccount(string, *models.UpdateAccountDto) error
+	TransferMoney(*models.TransferMoneyDto) error
 }
 type Storage interface {
 	AccountStorage
@@ -87,7 +88,7 @@ func (pgStore *PostGresStore) createAccountTable() error {
 	return err
 }
 
-func (pgStore *PostGresStore) CreateAccount(account *Account) (*Account, error) {
+func (pgStore *PostGresStore) CreateAccount(account *models.Account) (*models.Account, error) {
 	query := `INSERT INTO 
 	account(id,first_name,last_name,number,balance) 
 	VALUES ($1,$2,$3,$4,0)`
@@ -96,7 +97,7 @@ func (pgStore *PostGresStore) CreateAccount(account *Account) (*Account, error) 
 		return nil, err
 	}
 
-	var createdAccount *Account
+	var createdAccount *models.Account
 	createdAccount, err = pgStore.GetAccountById(account.ID)
 
 	if err != nil {
@@ -116,13 +117,13 @@ func (pgStore *PostGresStore) DeleteAccount(id string) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return NewAccountError(
+		return models.NewAccountError(
 			fmt.Sprintf("Account with ID: %s not found!", id), http.StatusNotFound,
 		)
 	}
 	return nil
 }
-func (pgStore *PostGresStore) UpdateAccount(id string, updateAccountDto *UpdateAccountDto) error {
+func (pgStore *PostGresStore) UpdateAccount(id string, updateAccountDto *models.UpdateAccountDto) error {
 	updates := map[string]any{}
 	if updateAccountDto.FirstName != nil {
 		updates["first_name"] = *updateAccountDto.FirstName
@@ -134,7 +135,7 @@ func (pgStore *PostGresStore) UpdateAccount(id string, updateAccountDto *UpdateA
 		updates["balance"] = *updateAccountDto.Balance
 	}
 	if len(updates) == 0 {
-		return NewAccountError("Nothing specified to update!", http.StatusBadRequest)
+		return models.NewAccountError("Nothing specified to update!", http.StatusBadRequest)
 	}
 	setParts := []string{}
 	args := []interface{}{}
@@ -161,16 +162,16 @@ func (pgStore *PostGresStore) UpdateAccount(id string, updateAccountDto *UpdateA
 		return err
 	}
 	if rowsAffected == 0 {
-		return NewAccountError(
+		return models.NewAccountError(
 			fmt.Sprintf("Account with ID: %s not found!", id), http.StatusNotFound,
 		)
 	}
 	return nil
 }
-func (pgStore *PostGresStore) GetAccountById(id string) (*Account, error) {
+func (pgStore *PostGresStore) GetAccountById(id string) (*models.Account, error) {
 	query := `SELECT id, first_name, last_name, number, balance, created_at, updated_at 
 	FROM account WHERE id = $1`
-	var account Account
+	var account models.Account
 	row := pgStore.db.QueryRow(query, id)
 	err := row.Scan(
 		&account.ID,
@@ -183,7 +184,7 @@ func (pgStore *PostGresStore) GetAccountById(id string) (*Account, error) {
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, NewAccountError(
+			return nil, models.NewAccountError(
 				fmt.Sprintf("Account with ID: %s not found!", id), http.StatusNotFound,
 			)
 		}
@@ -191,16 +192,16 @@ func (pgStore *PostGresStore) GetAccountById(id string) (*Account, error) {
 	}
 	return &account, nil
 }
-func (pgStore *PostGresStore) GetAllAccounts() ([]*Account, error) {
+func (pgStore *PostGresStore) GetAllAccounts() ([]*models.Account, error) {
 	query := `SELECT id, first_name, last_name, number, balance, created_at, updated_at 
 	FROM account`
 	rows, err := pgStore.db.Query(query)
 	if err != nil {
 		return nil, err
 	}
-	accounts := []*Account{}
+	accounts := []*models.Account{}
 	for rows.Next() {
-		account := &Account{}
+		account := &models.Account{}
 		err := rows.Scan(
 			&account.ID,
 			&account.FirstName,
@@ -217,7 +218,7 @@ func (pgStore *PostGresStore) GetAllAccounts() ([]*Account, error) {
 	}
 	return accounts, nil
 }
-func (pgStore *PostGresStore) TransferMoney(transferMoneyDto *TransferMoneyDto) error {
+func (pgStore *PostGresStore) TransferMoney(transferMoneyDto *models.TransferMoneyDto) error {
 	tx, err := pgStore.db.Begin()
 	if err != nil {
 		return err
@@ -245,7 +246,7 @@ func (pgStore *PostGresStore) TransferMoney(transferMoneyDto *TransferMoneyDto) 
 	}
 	affected, _ := res.RowsAffected()
 	if affected == 0 {
-		return NewAccountError("insufficient funds", http.StatusBadRequest)
+		return models.NewAccountError("insufficient funds", http.StatusBadRequest)
 	}
 	// Credit
 	if _, err := tx.Exec(
