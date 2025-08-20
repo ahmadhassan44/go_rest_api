@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,6 +27,38 @@ func WriteJSON(w http.ResponseWriter, status int, v any) error {
 
 type APIError struct {
 	Error string `json:"error"`
+}
+
+func withAuth(handlerFunc http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Authorization header required"})
+			return
+		}
+		const bearerPrefix = "Bearer "
+		if len(authHeader) < len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
+			WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Invalid authorization header format"})
+			return
+		}
+
+		tokenString := authHeader[len(bearerPrefix):]
+
+		claims, err := validateToken(tokenString)
+		if err != nil {
+			if errors.Is(err, ErrExpiredToken) {
+				WriteJSON(w, http.StatusUnauthorized, APIError{Error: "Token has expired"})
+				return
+			}
+			WriteJSON(w, http.StatusUnauthorized, APIError{Error: err.Error()})
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "user", claims["sub"])
+		r = r.WithContext(ctx)
+
+		handlerFunc(w, r)
+	}
 }
 
 func makeHttpHandlerFunc(f apiFunc) http.HandlerFunc {
@@ -54,7 +87,7 @@ func NewAPIServer(listenAddr string, store storage.Storage) *APIServer {
 }
 func (s *APIServer) Listen() {
 	router := mux.NewRouter()
-	router.HandleFunc("/account", makeHttpHandlerFunc(s.handleAccount))
+	router.HandleFunc("/account", withAuth(makeHttpHandlerFunc(s.handleAccount)))
 	router.HandleFunc("/account/{id}", makeHttpHandlerFunc(s.handleAccount))
 	router.HandleFunc("/transfer", makeHttpHandlerFunc(s.handleTransfer)).Methods("POST")
 	router.HandleFunc("/login", makeHttpHandlerFunc(s.handleLogin)).Methods("POST")
@@ -212,3 +245,32 @@ func generateAccessToken(userName string, expiry time.Time) (string, error) {
 	}
 	return tokenString, nil
 }
+
+func validateToken(tokenString string) (jwt.MapClaims, error) {
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, ErrInvalidToken
+		}
+		secret := os.Getenv("JWT_SECRET")
+		return []byte(secret), nil
+	})
+	if err != nil {
+		fmt.Println("JWT parse error:", err)
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, ErrExpiredToken
+		}
+		return nil, ErrInvalidToken
+	}
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return claims, nil
+	}
+	return nil, ErrInvalidToken
+}
+
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrInvalidToken       = errors.New("invalid token")
+	ErrExpiredToken       = errors.New("token has expired")
+	ErrEmailInUse         = errors.New("email already in use")
+)
