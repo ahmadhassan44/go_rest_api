@@ -159,11 +159,20 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) error {
 	if err := verifyPassword(*dbPass, loginDto.Password); err != nil {
 		return models.NewAccountError("Invalid Creadentials!", http.StatusUnauthorized)
 	}
-	accessToken, err := generateAccessToken(loginDto.UserName)
+	accessTokenExpiry := time.Now().Add(15 * time.Minute)
+	accessToken, err := generateAccessToken(loginDto.UserName, accessTokenExpiry)
 	if (err) != nil {
 		return err
 	}
-	refreshToken := "refresh-token-placeholder"
+	refreshTokenExpiry := time.Now().Add(7 * 24 * time.Hour)
+	refreshToken, err := generateAccessToken(loginDto.UserName, refreshTokenExpiry)
+	if (err) != nil {
+		return err
+	}
+	err = s.store.SaveRefreshToken(loginDto.UserName, refreshToken, refreshTokenExpiry)
+	if (err) != nil {
+		return err
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    refreshToken,
@@ -174,8 +183,9 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) error {
 	})
 
 	return WriteJSON(w, http.StatusOK, map[string]string{
-		"message":      "Login successful",
-		"access_token": accessToken,
+		"message":       "Login successful",
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
 	})
 }
 
@@ -189,12 +199,11 @@ func hashPassword(password string) (string, error) {
 func verifyPassword(hashedPassword, providedPassword string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(providedPassword))
 }
-func generateAccessToken(userName string) (string, error) {
-	expirationTime := time.Now().Add(15 * time.Second)
+func generateAccessToken(userName string, expiry time.Time) (string, error) {
 	claims := jwt.MapClaims{
-		"sub": userName,              // subject (user ID)
-		"exp": expirationTime.Unix(), // expiration time
-		"iat": time.Now().Unix(),     // issued at time
+		"sub": userName,          // subject (user ID)
+		"exp": expiry.Unix(),     // expiration time
+		"iat": time.Now().Unix(), // issued at time
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))

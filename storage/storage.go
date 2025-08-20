@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	models "github.com/ahmadhassan44/go_rest_api/models"
 	_ "github.com/lib/pq"
@@ -19,6 +20,7 @@ type AccountStorage interface {
 	UpdateAccount(string, *models.UpdateAccountDto) error
 	TransferMoney(*models.TransferMoneyDto) error
 	GetUserByUserName(string) (*string, error)
+	SaveRefreshToken(string, string, time.Time) error
 }
 type Storage interface {
 	AccountStorage
@@ -280,4 +282,24 @@ func (pgStore *PostGresStore) GetUserByUserName(userName string) (*string, error
 		return nil, err
 	}
 	return &hashedPassword, nil
+}
+func (pgStore *PostGresStore) SaveRefreshToken(userName string, refreshToken string, expires_at time.Time) error {
+	row := pgStore.db.QueryRow("SELECT id FROM account WHERE user_name = $1", userName)
+	var accountId string
+	err := row.Scan(
+		&accountId,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return models.NewAccountError(
+				fmt.Sprintf("Account with userName: %s not found!", userName), http.StatusNotFound,
+			)
+		}
+		return err
+	}
+	_, err = pgStore.db.Exec("INSERT INTO refresh_tokens(account_id,token,expires_at) VALUES ($1,$2,$3)", accountId, refreshToken, expires_at)
+	if err != nil {
+		return err
+	}
+	return nil
 }
