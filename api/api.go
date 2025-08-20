@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	models "github.com/ahmadhassan44/go_rest_api/models"
 	storage "github.com/ahmadhassan44/go_rest_api/storage"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -157,7 +159,10 @@ func (s *APIServer) handleLogin(w http.ResponseWriter, r *http.Request) error {
 	if err := verifyPassword(*dbPass, loginDto.Password); err != nil {
 		return models.NewAccountError("Invalid Creadentials!", http.StatusUnauthorized)
 	}
-	accessToken := "access-token-placeholder"
+	accessToken, err := generateAccessToken(loginDto.UserName)
+	if (err) != nil {
+		return err
+	}
 	refreshToken := "refresh-token-placeholder"
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
@@ -183,4 +188,18 @@ func hashPassword(password string) (string, error) {
 }
 func verifyPassword(hashedPassword, providedPassword string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(providedPassword))
+}
+func generateAccessToken(userName string) (string, error) {
+	expirationTime := time.Now().Add(15 * time.Second)
+	claims := jwt.MapClaims{
+		"sub": userName,              // subject (user ID)
+		"exp": expirationTime.Unix(), // expiration time
+		"iat": time.Now().Unix(),     // issued at time
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		return "", err
+	}
+	return tokenString, nil
 }
